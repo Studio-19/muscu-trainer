@@ -20,7 +20,7 @@ export default function Layout() {
   return (
     <div className="shell">
       <aside className="nav">
-        <div>
+        <div className="nav-brand">
           <div className="brand">
             <div className="brand-mark"><span>F</span></div>
             <div>
@@ -34,15 +34,18 @@ export default function Layout() {
           <div className="nav-section-label">Pilotage</div>
           <NavLink to="/seance" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <span className="ic"><Icon name="flash" /></span>
-            Séance du jour
+            <span className="nav-label">Séance du jour</span>
+            <span className="nav-label-mobile">Séance</span>
           </NavLink>
           <NavLink to="/programme" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <span className="ic"><Icon name="list" /></span>
-            Programme
+            <span className="nav-label">Programme</span>
+            <span className="nav-label-mobile">Programme</span>
           </NavLink>
           <NavLink to="/historique" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <span className="ic"><Icon name="calendar" /></span>
-            Historique
+            <span className="nav-label">Historique</span>
+            <span className="nav-label-mobile">Historique</span>
           </NavLink>
         </nav>
 

@@ -77,6 +77,37 @@ export default function SeanceDuJour() {
     )
   }
 
+  // Pré-remplit les séries d'un exercice avec les valeurs de la dernière séance.
+  // Bornes : si dernière séance a moins de séries → laisse les extras vides ;
+  // si plus → on n'écrase que les séries du draft courant.
+  const copyLastForExo = (exoIdx, lastEntry) => {
+    if (!lastEntry?.sets) return
+    setDraft((prev) =>
+      prev.map((row, idx) => {
+        if (idx !== exoIdx) return row
+        return {
+          ...row,
+          sets: row.sets.map((s, j) => {
+            const ls = lastEntry.sets[j]
+            if (!ls) return s
+            const w = ls.weight
+            const r = ls.reps
+            return {
+              weight: w === '' || w == null ? '' : String(w),
+              reps: r === '' || r == null ? '' : String(r)
+            }
+          })
+        }
+      })
+    )
+  }
+
+  const formatDateFr = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso + 'T00:00:00')
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+  }
+
   const saveSession = () => {
     const next = updateData((d) => {
       d.history = d.history.filter((h) => !(h.date === date && h.sessionId === session.id))
@@ -149,9 +180,13 @@ export default function SeanceDuJour() {
         const meta = EXERCISES_BY_ID[e.exerciseId]
         const group = GROUP_BY_EXERCISE_ID[e.exerciseId]
         const groupLabel = group?.name ?? '—'
+        // Restreint à la même séance (sessionId) ET hors d'aujourd'hui.
         const last = findLastEntry(
-          data.history.filter((h) => !(h.date === date && h.sessionId === session.id)),
+          data.history.filter((h) => h.sessionId === session.id && h.date !== date),
           e.exerciseId
+        )
+        const lastHasValues = !!last?.entry?.sets?.some(
+          (s) => (s.weight !== '' && s.weight != null) || (s.reps !== '' && s.reps != null)
         )
         const exoDraft = draft[exoIdx]
         if (!exoDraft) return null
@@ -169,6 +204,19 @@ export default function SeanceDuJour() {
                 <span>Cible <b>{exoDraft.repsTarget}</b> reps</span>
                 <span>Repos <b>{exoDraft.restSec}s</b></span>
                 <span className="tag red">{exoDraft.sets.length} séries</span>
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  onClick={() => copyLastForExo(exoIdx, last?.entry)}
+                  disabled={!lastHasValues}
+                  title={
+                    last
+                      ? `Copier les valeurs du ${formatDateFr(last.log.date)}`
+                      : 'Aucune séance précédente'
+                  }
+                >
+                  ↺ Copier dernière
+                </button>
               </div>
             </div>
 

@@ -51,6 +51,14 @@
 
 html, body, #root { height: 100%; }
 
+/* Kill any horizontal scroll. `clip` keeps position:sticky working,
+   `hidden` is the fallback for older browsers. */
+html, body {
+  overflow-x: hidden;
+  overflow-x: clip;
+  max-width: 100%;
+}
+
 body {
   margin: 0;
   font-family: var(--f-body);
@@ -90,8 +98,10 @@ input, select, textarea { font: inherit; color: inherit; }
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: var(--nav-w) 1fr;
+  grid-template-columns: var(--nav-w) minmax(0, 1fr);
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 /* Sidebar */
@@ -99,14 +109,18 @@ input, select, textarea { font: inherit; color: inherit; }
   position: sticky;
   top: 0;
   height: 100vh;
-  padding: 28px 18px 22px;
+  height: 100dvh;
+  padding: 28px 18px calc(22px + env(safe-area-inset-bottom));
   background:
     linear-gradient(180deg, #101113 0%, #0c0d0f 100%);
   border-right: 1px solid var(--c-line);
   display: flex;
   flex-direction: column;
   gap: 28px;
+  z-index: 50;
 }
+
+.nav-label-mobile { display: none; }
 
 .brand {
   display: flex;
@@ -250,7 +264,10 @@ input, select, textarea { font: inherit; color: inherit; }
 /* Main content */
 .main {
   min-width: 0;
-  padding: 36px 44px 80px;
+  padding:
+    clamp(22px, 4vw, 36px)
+    clamp(16px, 4vw, 44px)
+    calc(80px + env(safe-area-inset-bottom));
   max-width: var(--container);
   width: 100%;
   margin: 0 auto;
@@ -413,10 +430,11 @@ input, select, textarea { font: inherit; color: inherit; }
   padding: 11px 12px;
   border-radius: var(--r-sm);
   font-family: var(--f-body);
-  font-size: 14px;
+  font-size: 14.5px;
   outline: none;
   transition: border-color 120ms ease, box-shadow 120ms ease;
   width: 100%;
+  min-width: 0;
 }
 .input:focus, .select:focus {
   border-color: var(--c-red);
@@ -448,7 +466,7 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
   gap: 14px;
 }
 .stat {
@@ -738,12 +756,18 @@ input, select, textarea { font: inherit; color: inherit; }
   color: white;
 }
 .workout-head .right {
-  display: flex; gap: 18px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
   font-family: var(--f-mono);
   font-size: 11px;
   letter-spacing: 1.5px;
   color: var(--c-mute);
   text-transform: uppercase;
+}
+.workout-head .right .btn {
+  margin-left: 4px;
 }
 .workout-head .right b {
   color: white;
@@ -883,7 +907,7 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .stat-grid-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -933,8 +957,9 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
+  min-width: 0;
 }
 
 .cal-dow {
@@ -968,6 +993,8 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: background 120ms ease, border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
   position: relative;
   padding: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 .cal-cell.empty {
   background: transparent;
@@ -1187,28 +1214,277 @@ input, select, textarea { font: inherit; color: inherit; }
 
 /* ============================ Responsive ============================ */
 
-@media (max-width: 880px) {
+/* ================================================================
+   Tablet & below (≤ 960px) — sidebar becomes bottom tab bar
+   ================================================================ */
+
+@media (max-width: 960px) {
   .shell { grid-template-columns: 1fr; }
+
+  /* Sidebar -> fixed bottom tab bar */
   .nav {
-    position: relative;
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
     height: auto;
     flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
+    align-items: stretch;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    gap: 0;
     border-right: 0;
-    border-bottom: 1px solid var(--c-line);
+    border-top: 1px solid var(--c-line);
+    background: linear-gradient(180deg, rgba(16,17,19,0.92) 0%, rgba(10,11,13,0.97) 100%);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.45);
   }
-  .nav-list { flex-direction: row; gap: 4px; }
-  .nav-section-label, .nav-foot { display: none; }
-  .nav-item { padding: 8px 10px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
-  .nav-item .ic { display: none; }
-  .nav-item.active::before { left: 0; top: auto; bottom: -8px; width: 100%; height: 2px; border-radius: 0; }
-  .main { padding: 22px 18px 60px; }
-  .exo-item { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* Hide brand wrapper + footer on mobile */
+  .nav-brand,
+  .nav-foot,
+  .nav-section-label { display: none; }
+
+  /* Nav list = horizontal even row */
+  .nav-list {
+    flex-direction: row;
+    flex: 1;
+    gap: 4px;
+    width: 100%;
+  }
+
+  /* Each tab item */
+  .nav-item {
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 6px;
+    font-size: 10.5px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    text-align: center;
+    border-radius: 10px;
+    min-width: 0;
+  }
+  .nav-item .ic {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    color: var(--c-mute);
+  }
+  .nav-item .ic svg { width: 22px; height: 22px; stroke-width: 1.7; }
+  .nav-label { display: none; }
+  .nav-label-mobile { display: inline; line-height: 1; }
+  .nav-item.active {
+    background: rgba(255,40,0,0.10);
+    color: white;
+  }
+  .nav-item.active::before {
+    left: 50%;
+    top: 4px;
+    bottom: auto;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+  }
+
+  /* Main: bottom padding for tab bar */
+  .main {
+    padding: clamp(20px, 4.5vw, 30px) clamp(16px, 4vw, 24px)
+             calc(96px + env(safe-area-inset-bottom));
+  }
+
+  /* Page head: stack on mobile */
+  .page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding-bottom: 18px;
+    margin-bottom: 22px;
+  }
+  .page-head h1 { font-size: clamp(38px, 11vw, 56px); }
+  .page-head .meta {
+    text-align: left;
+    flex-direction: row;
+    flex-wrap: wrap;
+    display: flex;
+    gap: 6px 16px;
+    white-space: normal;
+  }
+
+  /* Session tabs: horizontal scroll */
+  .session-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    margin: 0 calc(-1 * clamp(16px, 4vw, 24px));
+    padding: 2px clamp(16px, 4vw, 24px) 6px;
+  }
+  .session-tabs::-webkit-scrollbar { display: none; }
+  .session-tab {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+
+  /* Cards: tighter padding */
+  .card { padding: 18px; border-radius: 16px; }
+  .card h2 { font-size: 24px; }
+  .card h3 { font-size: 20px; }
+
+  /* Workout card mobile */
+  .workout-head { padding: 14px 16px; gap: 10px; }
+  .workout-head .left .name { font-size: 20px; }
+  .workout-head .right {
+    width: 100%;
+    gap: 8px 12px;
+    font-size: 10px;
+    align-items: center;
+  }
+  .workout-head .right > span { white-space: nowrap; }
+  .workout-head .right .btn {
+    margin-left: auto;
+    padding: 7px 11px;
+    font-size: 10.5px;
+  }
+  .set-grid { padding: 12px 14px 16px; gap: 6px; }
+
+  /* Set row: keep "Dernière fois" but compact */
+  .set-row { grid-template-columns: 44px minmax(60px, 0.95fr) 1fr 1fr; gap: 8px; }
+  .set-row .set-n { font-size: 18px; }
+  .set-row .last { font-size: 11px; }
+  .set-row.head { font-size: 9px; letter-spacing: 1.2px; }
+
+  /* Programme exo-item: name spans full row, inputs share row, × at end */
+  .exo-item {
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 8px 10px;
+  }
   .exo-item .name { grid-column: 1 / -1; }
-  .add-exo { grid-template-columns: 1fr; }
-  .set-row { grid-template-columns: 44px 1fr 1fr 1fr; }
-  .set-row.head .last,
-  .set-row.head .h-last { font-size: 9px; }
+  .exo-item > .btn.ghost.sm { align-self: end; }
+
+  /* Add-exo block */
+  .add-exo { grid-template-columns: 1fr; gap: 12px; }
+  .add-exo .field { flex: 1 1 100% !important; }
+  .group-chips { gap: 5px; }
+  .group-chip {
+    padding: 7px 11px;
+    font-size: 11.5px;
+    gap: 6px;
+  }
+  .group-chip .count { font-size: 9px; padding: 1px 5px; }
+
+  /* Calendar mobile */
+  .cal { padding: 16px 14px; }
+  .cal-head { gap: 10px; margin-bottom: 12px; }
+  .cal-title { font-size: clamp(20px, 6vw, 26px); }
+  .cal-title .cal-year { font-size: 13px; margin-left: 6px; }
+  .cal-grid { gap: 4px; }
+  .cal-dow { font-size: 9.5px; padding: 4px 0 6px; }
+  .cal-cell { font-size: 13px; gap: 3px; border-radius: 8px; }
+  .cal-cell .dot { width: 4px; height: 4px; }
+
+  /* Day-log card mobile */
+  .day-log-card { padding: 16px 16px; }
+  .day-log-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .day-log-metrics { width: 100%; gap: 8px; }
+  .day-log-metrics .metric { flex: 1; min-width: 0; }
+  .day-log-metrics .metric .v { font-size: 22px; }
+
+  /* Stats grid hero */
+  .stat-grid { gap: 10px; }
+  .stat { padding: 13px 14px; }
+  .stat .v { font-size: 30px; }
+
+  /* Inputs: prevent iOS Safari zoom on focus (must be ≥ 16px) */
+  .input, .select, .input.num {
+    font-size: 16px;
+  }
+}
+
+/* ================================================================
+   Phone (≤ 540px) — drop "last" col on set rows, tighter calendar
+   ================================================================ */
+
+@media (max-width: 540px) {
+  .page-head h1 { font-size: clamp(34px, 12vw, 46px); letter-spacing: 1.5px; }
+
+  /* Set row: drop the "Dernière fois" column entirely.
+     Copy-button + placeholders cover the same need on small screens. */
+  .set-row { grid-template-columns: 36px 1fr 1fr; gap: 8px; }
+  .set-row.head .h-last,
+  .set-row .last { display: none; }
+  .set-row .set-n { font-size: 16px; }
+
+  /* Programme exo-item: name on top, 3 inputs row, × becomes full-width sub-row */
+  .exo-item {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .exo-item .name { grid-column: 1 / -1; }
+  .exo-item > .btn.ghost.sm {
+    grid-column: 1 / -1;
+    justify-self: end;
+    width: auto;
+    padding: 6px 14px;
+  }
+
+  /* Group chips: compact */
+  .group-chip { padding: 6px 10px; font-size: 11px; }
+
+  /* Calendar: smaller cells */
+  .cal { padding: 14px 12px; border-radius: 14px; }
+  .cal-cell { font-size: 12px; }
+  .cal-dow { font-size: 9px; }
+
+  /* Workout card: even tighter */
+  .workout-head { padding: 12px 14px; }
+  .workout-head .left .group { font-size: 9.5px; letter-spacing: 1.5px; }
+  .workout-head .left .name { font-size: 18px; letter-spacing: 1px; }
+  .workout-head .right { font-size: 9.5px; gap: 6px 10px; }
+  .workout-head .right .btn {
+    padding: 6px 10px;
+    font-size: 10px;
+    letter-spacing: 0.8px;
+  }
+
+  /* Brand mark on splash (no longer rendered, but defensive) */
+  .brand-name { font-size: 22px; letter-spacing: 2px; }
+}
+
+/* ================================================================
+   Tiny phone (≤ 380px) — last-mile compression
+   ================================================================ */
+
+@media (max-width: 380px) {
+  .page-head h1 { font-size: clamp(30px, 13vw, 40px); }
+  .nav-item { font-size: 9.5px; letter-spacing: 1px; }
+  .nav-item .ic, .nav-item .ic svg { width: 20px; height: 20px; }
+  .session-tab { padding: 9px 13px; font-size: 11px; }
+  .stat .v { font-size: 26px; }
+  .day-log-metrics .metric .v { font-size: 20px; }
+  .cal-title { font-size: 18px; }
+}
+
+/* ================================================================
+   Hover-only refinements (desktop / pointer)
+   ================================================================ */
+
+@media (hover: none) {
+  /* Remove hover transforms on touch devices to avoid sticky hover */
+  .session-tab:hover,
+  .group-chip:hover,
+  .nav-item:hover {
+    background: inherit;
+  }
 }
