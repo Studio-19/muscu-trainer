@@ -37,12 +37,12 @@ function buildExerciseCatalog() {
   )
 }
 
-const SESSION_JSON_SCHEMA = {
+const SESSION_ITEM_SCHEMA = {
   type: 'object',
   properties: {
     name: {
       type: 'string',
-      description: 'Nom court et descriptif de la séance, ex: "Push pecs/épaules" ou "Jambes hypertrophie"'
+      description: 'Nom court et descriptif de la séance, ex: "Push pecs/épaules"'
     },
     exercises: {
       type: 'array',
@@ -62,6 +62,22 @@ const SESSION_JSON_SCHEMA = {
     }
   },
   required: ['name', 'exercises']
+}
+
+const PROGRAM_JSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    name: {
+      type: 'string',
+      description: 'Nom du programme, ex: "PPL 4 séances/semaine — Hypertrophie"'
+    },
+    sessions: {
+      type: 'array',
+      description: "Toutes les séances du programme. Le nombre dépend strictement de la fréquence renseignée par l'utilisateur.",
+      items: SESSION_ITEM_SCHEMA
+    }
+  },
+  required: ['name', 'sessions']
 }
 
 // =====================================================================
@@ -108,18 +124,30 @@ function catalogBlock() {
   return cat.map((e) => `${e.id} | ${e.group} | ${e.equipment} | ${e.name}`).join('\n')
 }
 
-function sessionSystemPrompt(profile) {
-  return `Tu es un coach sportif expert en musculation. Tu génères des séances adaptées au profil de l'utilisateur.
+function programSystemPrompt(profile) {
+  return `Tu es un coach sportif expert en musculation. Tu construis des PROGRAMMES complets (plusieurs séances) adaptés au profil et aux disponibilités de l'utilisateur.
 
 PROFIL UTILISATEUR:
 ${profileBlock(profile)}
 
 CONTRAINTES STRICTES:
+- Tu DOIS respecter EXACTEMENT la fréquence indiquée dans "Disponibilités" (ex: "4 séances/semaine, 1h30" → exactement 4 séances dans le programme).
+- Choisis un split intelligent selon la fréquence et le niveau:
+  * 2x/sem → Full Body
+  * 3x/sem → Full Body OU Push/Pull/Legs
+  * 4x/sem → Upper/Lower OU Push/Pull/Legs+Full
+  * 5-6x/sem → Push/Pull/Legs (x2) OU Bro split
+- Adapte le NOMBRE D'EXERCICES par séance à la durée:
+  * 45 min → 4-5 exos
+  * 60 min → 5-6 exos
+  * 75-90 min → 6-8 exos
+  * 90+ min → 7-9 exos
+- Ordre dans chaque séance: gros compounds d'abord, isolations ensuite.
+- Volume hebdo équilibré entre groupes musculaires antagonistes.
+- Adapte intensité (séries/reps/repos) à l'objectif (force = 4-6 reps repos 2-3min, hypertrophie = 6-12 reps repos 60-120s, endurance = 12-20 reps repos 30-60s).
+- Tiens compte du matériel disponible et des notes/blessures.
 - Tu DOIS choisir chaque exerciseId UNIQUEMENT dans le catalogue ci-dessous (format: id | groupe | matériel | nom).
 - Ne JAMAIS inventer d'exerciseId qui n'est pas dans le catalogue.
-- Ordre logique: gros compounds d'abord, isolations ensuite.
-- 4-8 exercices par séance selon la durée demandée.
-- Adapte volume/intensité au niveau et à l'objectif.
 
 CATALOGUE D'EXERCICES DISPONIBLES:
 ${catalogBlock()}
@@ -306,14 +334,20 @@ async function callProvider({ aiConfig, systemPrompt, userPrompt, jsonSchema }) 
 // Public API
 // =====================================================================
 
-export async function generateSession({ aiConfig, profile, prompt }) {
-  if (!prompt?.trim()) throw new Error('Décris la séance que tu veux.')
+export async function generateProgram({ aiConfig, profile, prompt }) {
+  if (!profile?.dispos?.trim()) {
+    throw new Error('Renseigne tes "Disponibilités" dans le profil (ex: "4 séances/semaine, 1h30").')
+  }
+
+  const userPrompt = prompt?.trim()
+    ? `Demande de l'utilisateur: ${prompt.trim()}\n\nGénère un programme complet correspondant.`
+    : 'Génère un programme complet adapté à mon profil et mes disponibilités.'
 
   const raw = await callProvider({
     aiConfig,
-    systemPrompt: sessionSystemPrompt(profile),
-    userPrompt: prompt,
-    jsonSchema: SESSION_JSON_SCHEMA
+    systemPrompt: programSystemPrompt(profile),
+    userPrompt,
+    jsonSchema: PROGRAM_JSON_SCHEMA
   })
 
   let parsed
@@ -323,31 +357,39 @@ export async function generateSession({ aiConfig, profile, prompt }) {
     throw new Error(`JSON invalide reçu de l'IA. Réessaie.\n${raw.slice(0, 200)}`)
   }
 
-  // Validate exercise IDs against catalog. Drop invalids and report.
-  const validExercises = []
   const invalidIds = []
-  for (const e of parsed.exercises ?? []) {
-    if (EXERCISES_BY_ID[e.exerciseId]) {
-      validExercises.push({
-        exerciseId: e.exerciseId,
-        sets: clampInt(e.sets, 1, 20, 4),
-        repsTarget: clampInt(e.repsTarget, 1, 100, 8),
-        restSec: clampInt(e.restSec, 0, 600, 90)
+  const sessions = []
+  for (const s of parsed.sessions ?? []) {
+    const validExercises = []
+    for (const e of s.exercises ?? []) {
+      if (EXERCISES_BY_ID[e.exerciseId]) {
+        validExercises.push({
+          exerciseId: e.exerciseId,
+          sets: clampInt(e.sets, 1, 20, 4),
+          repsTarget: clampInt(e.repsTarget, 1, 100, 8),
+          restSec: clampInt(e.restSec, 0, 600, 90)
+        })
+      } else {
+        invalidIds.push(e.exerciseId)
+      }
+    }
+    if (validExercises.length > 0) {
+      sessions.push({
+        name: String(s.name || 'Séance').slice(0, 80),
+        exercises: validExercises
       })
-    } else {
-      invalidIds.push(e.exerciseId)
     }
   }
 
-  if (validExercises.length === 0) {
+  if (sessions.length === 0) {
     throw new Error(
-      `L'IA n'a renvoyé aucun exercice valide. IDs rejetés: ${invalidIds.join(', ') || '—'}`
+      `L'IA n'a renvoyé aucune séance valide. IDs rejetés: ${invalidIds.join(', ') || '—'}`
     )
   }
 
   return {
-    name: String(parsed.name || 'Séance générée').slice(0, 80),
-    exercises: validExercises,
+    name: String(parsed.name || 'Programme généré').slice(0, 80),
+    sessions,
     invalidIds
   }
 }

@@ -1542,6 +1542,34 @@ input, select, textarea { font: inherit; color: inherit; }
   flex-wrap: wrap;
 }
 
+.generated-session {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--c-anthracite);
+  border: 1px solid var(--c-line-soft);
+  border-radius: var(--r-sm);
+}
+
+.generated-session-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-family: var(--f-display);
+  letter-spacing: 0.04em;
+}
+
+.generated-session-head .num {
+  color: var(--c-red);
+  font-size: 13px;
+}
+
+.generated-session-head .title {
+  color: var(--c-white);
+  font-size: 16px;
+  flex: 1;
+}
+
 .analysis-block {
   margin-top: 16px;
   padding: 16px 18px;

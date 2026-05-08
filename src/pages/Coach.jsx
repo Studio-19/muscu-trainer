@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { getData, updateData, setProfile, setAiConfig, uid } from '../storage.js'
 import { EXERCISES_BY_ID, GROUP_BY_EXERCISE_ID } from '../data/exercises.js'
-import { generateSession, analyzeHistory, PROVIDERS } from '../ai.js'
+import { generateProgram, analyzeHistory, PROVIDERS } from '../ai.js'
 
 export default function Coach() {
   const [data, setLocal] = useState(getData())
@@ -43,7 +43,7 @@ export default function Coach() {
     setGenerated(null)
     setGenerating(true)
     try {
-      const result = await generateSession({ aiConfig, profile, prompt })
+      const result = await generateProgram({ aiConfig, profile, prompt })
       setGenerated(result)
     } catch (err) {
       setGenError(err.message || String(err))
@@ -52,25 +52,46 @@ export default function Coach() {
     }
   }
 
-  const handleAddToProgramme = () => {
+  const buildSessions = (program) =>
+    program.sessions.map((s) => ({
+      id: uid('sess'),
+      name: s.name,
+      exercises: s.exercises.map((e) => ({
+        id: uid('ex'),
+        exerciseId: e.exerciseId,
+        sets: e.sets,
+        repsTarget: e.repsTarget,
+        restSec: e.restSec
+      }))
+    }))
+
+  const handleReplaceProgramme = () => {
     if (!generated) return
+    if (!window.confirm('Remplacer ton programme actuel par celui-ci ? L\'historique sera conservé.')) return
+    const sessions = buildSessions(generated)
+    const next = updateData((draft) => {
+      draft.programme = {
+        id: draft.programme?.id ?? 'prog-1',
+        name: generated.name,
+        sessions
+      }
+      draft.ui = draft.ui || {}
+      draft.ui.activeSessionId = sessions[0]?.id ?? null
+    })
+    setLocal(next)
+    setGenerated(null)
+    setPrompt('')
+  }
+
+  const handleAppendProgramme = () => {
+    if (!generated) return
+    const sessions = buildSessions(generated)
     const next = updateData((draft) => {
       if (!draft.programme) draft.programme = { id: 'prog-1', name: 'Mon programme', sessions: [] }
       if (!draft.programme.sessions) draft.programme.sessions = []
-      const newSession = {
-        id: uid('sess'),
-        name: generated.name,
-        exercises: generated.exercises.map((e) => ({
-          id: uid('ex'),
-          exerciseId: e.exerciseId,
-          sets: e.sets,
-          repsTarget: e.repsTarget,
-          restSec: e.restSec
-        }))
-      }
-      draft.programme.sessions.push(newSession)
+      draft.programme.sessions.push(...sessions)
       draft.ui = draft.ui || {}
-      draft.ui.activeSessionId = newSession.id
+      draft.ui.activeSessionId = sessions[0]?.id ?? draft.ui.activeSessionId
     })
     setLocal(next)
     setGenerated(null)
@@ -268,21 +289,27 @@ export default function Coach() {
         </div>
       </div>
 
-      {/* ============ Génération de séance ============ */}
+      {/* ============ Génération de programme ============ */}
       <div className="card" style={{ marginBottom: 22 }}>
         <div className="sect-head" style={{ marginTop: 0 }}>
-          <div className="title">Générer une séance</div>
-          <div className="sub">Décris ce que tu veux, l'IA respecte ton profil et le catalogue d'exos</div>
+          <div className="title">Générer un programme</div>
+          <div className="sub">L'IA construit toutes les séances en respectant tes disponibilités et ton profil</div>
         </div>
 
+        {!profile.dispos?.trim() && (
+          <div className="alert error" style={{ marginBottom: 12 }}>
+            Renseigne d'abord tes "Disponibilités" dans le profil ci-dessus (ex: "4 séances/semaine, 1h30").
+          </div>
+        )}
+
         <div className="field" style={{ marginBottom: 12 }}>
-          <label>Demande</label>
+          <label>Précisions <span className="hint">— optionnel</span></label>
           <textarea
             className="input"
             rows={3}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Ex: Push 60 min focus pecs, peu de matériel à part barre et haltères"
+            placeholder="Ex: focus pecs/dos, j'aime pas les fentes, split PPL si possible"
           />
         </div>
 
@@ -290,9 +317,9 @@ export default function Coach() {
           type="button"
           className="btn primary"
           onClick={handleGenerate}
-          disabled={generating || !aiConfig.apiKey || !prompt.trim()}
+          disabled={generating || !aiConfig.apiKey || !profile.dispos?.trim()}
         >
-          {generating ? 'Génération…' : '✨ Générer'}
+          {generating ? 'Génération…' : '✨ Générer un programme'}
         </button>
 
         {genError && <div className="alert error" style={{ marginTop: 12 }}>{genError}</div>}
@@ -302,34 +329,42 @@ export default function Coach() {
             <div className="generated-head">
               <div className="ex-name">{generated.name}</div>
               <div className="group-tag">
-                {generated.exercises.length} exo{generated.exercises.length > 1 ? 's' : ''}
-                {generated.invalidIds?.length > 0 && ` · ${generated.invalidIds.length} rejeté(s)`}
+                {generated.sessions.length} séance{generated.sessions.length > 1 ? 's' : ''}
+                {generated.invalidIds?.length > 0 && ` · ${generated.invalidIds.length} exo(s) rejeté(s)`}
               </div>
             </div>
-            <div className="exo-detail-list">
-              {generated.exercises.map((e, i) => {
-                const meta = EXERCISES_BY_ID[e.exerciseId]
-                const group = GROUP_BY_EXERCISE_ID[e.exerciseId]
-                return (
-                  <div key={i} className="exo-detail">
-                    <div className="exo-detail-meta">
-                      {[group?.name, meta?.equipment].filter(Boolean).join(' · ')}
-                      {' · '}cible {e.repsTarget} reps · repos {e.restSec}s
-                    </div>
-                    <div className="exo-detail-name">{meta?.name ?? e.exerciseId}</div>
-                    <div className="exo-sets">
-                      <span className="exo-set">
-                        <span className="set-i">×</span>
-                        {e.sets} séries
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-              <button type="button" className="btn primary" onClick={handleAddToProgramme}>
-                + Ajouter au programme
+
+            {generated.sessions.map((s, si) => (
+              <div key={si} className="generated-session">
+                <div className="generated-session-head">
+                  <span className="num">{String(si + 1).padStart(2, '0')}</span>
+                  <span className="title">{s.name}</span>
+                  <span className="hint">{s.exercises.length} exo{s.exercises.length > 1 ? 's' : ''}</span>
+                </div>
+                <div className="exo-detail-list">
+                  {s.exercises.map((e, i) => {
+                    const meta = EXERCISES_BY_ID[e.exerciseId]
+                    const group = GROUP_BY_EXERCISE_ID[e.exerciseId]
+                    return (
+                      <div key={i} className="exo-detail">
+                        <div className="exo-detail-meta">
+                          {[group?.name, meta?.equipment].filter(Boolean).join(' · ')}
+                          {' · '}{e.sets}×{e.repsTarget} · repos {e.restSec}s
+                        </div>
+                        <div className="exo-detail-name">{meta?.name ?? e.exerciseId}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+              <button type="button" className="btn primary" onClick={handleReplaceProgramme}>
+                Remplacer mon programme
+              </button>
+              <button type="button" className="btn" onClick={handleAppendProgramme}>
+                + Ajouter au programme actuel
               </button>
               <button type="button" className="btn ghost" onClick={() => setGenerated(null)}>
                 Rejeter
