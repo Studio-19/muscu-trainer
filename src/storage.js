@@ -1,5 +1,23 @@
 const STORAGE_KEY = 'forza.muscu.v1'
 
+const defaultProfile = () => ({
+  sexe: '',
+  age: '',
+  taille: '',
+  poids: '',
+  niveau: '',
+  objectif: '',
+  dispos: '',
+  materiel: '',
+  notes: ''
+})
+
+const defaultAiConfig = () => ({
+  provider: 'gemini',
+  apiKey: '',
+  model: 'gemini-2.5-flash'
+})
+
 const defaultData = () => ({
   version: 1,
   programme: {
@@ -14,10 +32,25 @@ const defaultData = () => ({
     ]
   },
   history: [],
+  profile: defaultProfile(),
+  aiConfig: defaultAiConfig(),
   ui: {
     activeSessionId: 'sess-1'
   }
 })
+
+function withDefaults(parsed) {
+  const base = defaultData()
+  return {
+    ...base,
+    ...parsed,
+    programme: parsed.programme ?? base.programme,
+    history: parsed.history ?? base.history,
+    profile: { ...base.profile, ...(parsed.profile ?? {}) },
+    aiConfig: { ...base.aiConfig, ...(parsed.aiConfig ?? {}) },
+    ui: { ...base.ui, ...(parsed.ui ?? {}) }
+  }
+}
 
 export function getData() {
   try {
@@ -29,7 +62,7 @@ export function getData() {
     }
     const parsed = JSON.parse(raw)
     if (!parsed || typeof parsed !== 'object') return defaultData()
-    return parsed
+    return withDefaults(parsed)
   } catch {
     return defaultData()
   }
@@ -50,6 +83,26 @@ export function updateData(mutator) {
 export function resetData() {
   localStorage.removeItem(STORAGE_KEY)
   return getData()
+}
+
+export function getProfile() {
+  return getData().profile
+}
+
+export function setProfile(profile) {
+  return updateData((draft) => {
+    draft.profile = { ...draft.profile, ...profile }
+  })
+}
+
+export function getAiConfig() {
+  return getData().aiConfig
+}
+
+export function setAiConfig(aiConfig) {
+  return updateData((draft) => {
+    draft.aiConfig = { ...draft.aiConfig, ...aiConfig }
+  })
 }
 
 export function uid(prefix = 'id') {

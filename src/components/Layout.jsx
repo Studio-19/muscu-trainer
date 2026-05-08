@@ -11,6 +11,8 @@ const Icon = ({ name }) => {
       return <svg {...common}><path d="M3 3v18h18M7 14l3-3 4 4 5-6" /></svg>
     case 'calendar':
       return <svg {...common}><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 10h18M8 2v4M16 2v4" /></svg>
+    case 'spark':
+      return <svg {...common}><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6L12 2z" /><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14z" /></svg>
     default:
       return null
   }
@@ -46,6 +48,11 @@ export default function Layout() {
             <span className="ic"><Icon name="calendar" /></span>
             <span className="nav-label">Historique</span>
             <span className="nav-label-mobile">Historique</span>
+          </NavLink>
+          <NavLink to="/coach" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="ic"><Icon name="spark" /></span>
+            <span className="nav-label">Coach IA</span>
+            <span className="nav-label-mobile">Coach</span>
           </NavLink>
         </nav>
 

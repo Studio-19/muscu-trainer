@@ -1488,3 +1488,92 @@ input, select, textarea { font: inherit; color: inherit; }
     background: inherit;
   }
 }
+
+/* ================================================================
+   Coach IA page
+   ================================================================ */
+
+.coach-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 640px) {
+  .coach-grid { grid-template-columns: 1fr; }
+}
+
+.hint {
+  color: var(--c-mute);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.alert {
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.alert.error {
+  background: rgba(255, 40, 0, 0.08);
+  border: 1px solid rgba(255, 40, 0, 0.35);
+  color: #ffb8aa;
+}
+
+.generated-block {
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--c-anthracite-2);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+}
+
+.generated-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.analysis-block {
+  margin-top: 16px;
+  padding: 16px 18px;
+  background: var(--c-anthracite-2);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+}
+
+.analysis-block .md {
+  color: var(--c-bone);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.analysis-block .md h2,
+.analysis-block .md h3,
+.analysis-block .md h4 {
+  font-family: var(--f-display);
+  letter-spacing: 0.04em;
+  margin: 18px 0 8px;
+  color: var(--c-white);
+}
+
+.analysis-block .md h2 { font-size: 22px; }
+.analysis-block .md h3 { font-size: 18px; }
+.analysis-block .md h4 { font-size: 15px; text-transform: uppercase; }
+
+.analysis-block .md p { margin: 6px 0; }
+.analysis-block .md ul {
+  margin: 6px 0 10px;
+  padding-left: 22px;
+}
+.analysis-block .md li { margin: 3px 0; }
+.analysis-block .md strong { color: var(--c-white); }
+
